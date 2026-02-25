@@ -1,0 +1,23 @@
+{
+	"name": "Rust",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+	"features": {
+		"ghcr.io/devcontainers/features/rust:1": {
+			"profile": "default"
+		},
+		"ghcr.io/va-h/devcontainers-features/uv:1": {
+			"shellautocompletion": true,
+			"version": "latest"
+		}
+	},
+	"customizations": {
+        "vscode":{
+            "settings": {
+				"[rust]": {
+					"editor.formatOnSave": true
+				}
+			}
+		}
+	}
+}
