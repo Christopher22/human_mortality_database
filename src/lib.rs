@@ -15,4 +15,13 @@ pub mod covariates;
 mod table;
 pub mod values;
 
+/// Birth counts indexed by year and sex.
+pub type Births<Y> = Table<Y, Empty, covariates::Sex, values::Births>;
+/// Death counts indexed by year, age, and sex.
+pub type Deaths<Y, A> = Table<Y, A, covariates::Sex, values::Deaths>;
+/// Life table rows indexed by year and age.
+pub type LifeTable<Y, A> = Table<Y, A, Empty, values::LifeTableRow>;
+/// Life expectancy at birth indexed by year and sex.
+pub type LifeExpectancyAtBirth<Y> = Table<Y, Empty, covariates::Sex, values::LifeExpectancyAtBirth>;
+
 pub use self::table::{Country, Empty, Index, Range, Table};
