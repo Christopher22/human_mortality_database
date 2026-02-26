@@ -121,15 +121,225 @@ impl Index for Empty {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[non_exhaustive]
 pub enum Country {
+    /// Australia
+    Australia,
+    /// Austria
+    Austria,
+    /// Belarus
+    Belarus,
+    /// Belgium
+    Belgium,
+    /// Bulgaria
+    Bulgaria,
+    /// Canada
+    Canada,
+    /// Chile
+    Chile,
+    /// Croatia
+    Croatia,
+    /// Czechia
+    Czechia,
+    /// Denmark
+    Denmark,
+    /// Estonia
+    Estonia,
+    /// Finland
+    Finland,
+    /// France (total population)
+    FranceTotalPopulation,
+    /// France (civilian population)
+    FranceCivilianPopulation,
     /// Germany
     Germany,
+    /// East Germany
+    EastGermany,
+    /// West Germany
+    WestGermany,
+    /// Greece
+    Greece,
+    /// Hong Kong
+    HongKong,
+    /// Hungary
+    Hungary,
+    /// Iceland
+    Iceland,
+    /// Ireland
+    Ireland,
+    /// Israel
+    Israel,
+    /// Italy
+    Italy,
+    /// Japan
+    Japan,
+    /// Latvia
+    Latvia,
+    /// Lithuania
+    Lithuania,
+    /// Luxembourg
+    Luxembourg,
+    /// Netherlands
+    Netherlands,
+    /// New Zealand (total population)
+    NewZealandTotalPopulation,
+    /// New Zealand (Maori)
+    NewZealandMaori,
+    /// New Zealand (Non-Maori)
+    NewZealandNonMaori,
+    /// Norway
+    Norway,
+    /// Poland
+    Poland,
+    /// Portugal
+    Portugal,
+    /// Republic of Korea
+    RepublicOfKorea,
+    /// Russia
+    Russia,
+    /// Slovakia
+    Slovakia,
+    /// Slovenia
+    Slovenia,
+    /// Spain
+    Spain,
+    /// Sweden
+    Sweden,
+    /// Switzerland
+    Switzerland,
+    /// Taiwan
+    Taiwan,
+    /// United Kingdom (total population)
+    UnitedKingdomTotalPopulation,
+    /// England & Wales (total population)
+    EnglandAndWalesTotalPopulation,
+    /// England & Wales (civilian population)
+    EnglandAndWalesCivilianPopulation,
+    /// Scotland
+    Scotland,
+    /// Northern Ireland
+    NorthernIreland,
+    /// U.S.A.
+    UnitedStatesOfAmerica,
+    /// Ukraine
+    Ukraine,
 }
 
 impl Country {
     /// Returns the HMD code for the country.
     pub fn code(&self) -> &'static str {
         match self {
+            Country::Australia => "AUS",
+            Country::Austria => "AUT",
+            Country::Belarus => "BLR",
+            Country::Belgium => "BEL",
+            Country::Bulgaria => "BGR",
+            Country::Canada => "CAN",
+            Country::Chile => "CHL",
+            Country::Croatia => "HRV",
+            Country::Czechia => "CZE",
+            Country::Denmark => "DNK",
+            Country::Estonia => "EST",
+            Country::Finland => "FIN",
+            Country::FranceTotalPopulation => "FRATNP",
+            Country::FranceCivilianPopulation => "FRACNP",
             Country::Germany => "DEUTNP",
+            Country::EastGermany => "DEUTE",
+            Country::WestGermany => "DEUTW",
+            Country::Greece => "GRC",
+            Country::HongKong => "HKG",
+            Country::Hungary => "HUN",
+            Country::Iceland => "ISL",
+            Country::Ireland => "IRL",
+            Country::Israel => "ISR",
+            Country::Italy => "ITA",
+            Country::Japan => "JPN",
+            Country::Latvia => "LVA",
+            Country::Lithuania => "LTU",
+            Country::Luxembourg => "LUX",
+            Country::Netherlands => "NLD",
+            Country::NewZealandTotalPopulation => "NZL_NP",
+            Country::NewZealandMaori => "NZL_MA",
+            Country::NewZealandNonMaori => "NZL_NM",
+            Country::Norway => "NOR",
+            Country::Poland => "POL",
+            Country::Portugal => "PRT",
+            Country::RepublicOfKorea => "KOR",
+            Country::Russia => "RUS",
+            Country::Slovakia => "SVK",
+            Country::Slovenia => "SVN",
+            Country::Spain => "ESP",
+            Country::Sweden => "SWE",
+            Country::Switzerland => "CHE",
+            Country::Taiwan => "TWN",
+            Country::UnitedKingdomTotalPopulation => "GBR_NP",
+            Country::EnglandAndWalesTotalPopulation => "GBRTENW",
+            Country::EnglandAndWalesCivilianPopulation => "GBRCENW",
+            Country::Scotland => "GBR_SCO",
+            Country::NorthernIreland => "GBR_NIR",
+            Country::UnitedStatesOfAmerica => "USA",
+            Country::Ukraine => "UKR",
+        }
+    }
+
+    fn from_name(country_name: &str) -> Option<Self> {
+        match country_name {
+            "Australia" => Some(Country::Australia),
+            "Austria" => Some(Country::Austria),
+            "Belarus" => Some(Country::Belarus),
+            "Belgium" => Some(Country::Belgium),
+            "Bulgaria" => Some(Country::Bulgaria),
+            "Canada" => Some(Country::Canada),
+            "Chile" => Some(Country::Chile),
+            "Croatia" => Some(Country::Croatia),
+            "Czechia" => Some(Country::Czechia),
+            "Denmark" => Some(Country::Denmark),
+            "Estonia" => Some(Country::Estonia),
+            "Finland" => Some(Country::Finland),
+            "France" => Some(Country::FranceTotalPopulation),
+            "France Total population" => Some(Country::FranceTotalPopulation),
+            "France Civilian population" => Some(Country::FranceCivilianPopulation),
+            "Germany" => Some(Country::Germany),
+            "East Germany" => Some(Country::EastGermany),
+            "West Germany" => Some(Country::WestGermany),
+            "Greece" => Some(Country::Greece),
+            "Hong Kong" => Some(Country::HongKong),
+            "Hungary" => Some(Country::Hungary),
+            "Iceland" => Some(Country::Iceland),
+            "Ireland" => Some(Country::Ireland),
+            "Israel" => Some(Country::Israel),
+            "Italy" => Some(Country::Italy),
+            "Japan" => Some(Country::Japan),
+            "Latvia" => Some(Country::Latvia),
+            "Lithuania" => Some(Country::Lithuania),
+            "Luxembourg" => Some(Country::Luxembourg),
+            "Netherlands" => Some(Country::Netherlands),
+            "New Zealand" => Some(Country::NewZealandTotalPopulation),
+            "New Zealand Total population" => Some(Country::NewZealandTotalPopulation),
+            "Maori" => Some(Country::NewZealandMaori),
+            "Non-Maori" => Some(Country::NewZealandNonMaori),
+            "Norway" => Some(Country::Norway),
+            "Poland" => Some(Country::Poland),
+            "Portugal" => Some(Country::Portugal),
+            "Republic of Korea" => Some(Country::RepublicOfKorea),
+            "Russia" => Some(Country::Russia),
+            "Slovakia" => Some(Country::Slovakia),
+            "Slovenia" => Some(Country::Slovenia),
+            "Spain" => Some(Country::Spain),
+            "Sweden" => Some(Country::Sweden),
+            "Switzerland" => Some(Country::Switzerland),
+            "Taiwan" => Some(Country::Taiwan),
+            "U.K." => Some(Country::UnitedKingdomTotalPopulation),
+            "United Kingdom" => Some(Country::UnitedKingdomTotalPopulation),
+            "United Kingdom Total Population" => Some(Country::UnitedKingdomTotalPopulation),
+            "England & Wales Total Population" => Some(Country::EnglandAndWalesTotalPopulation),
+            "England & Wales Civilian Population" => {
+                Some(Country::EnglandAndWalesCivilianPopulation)
+            }
+            "Scotland" => Some(Country::Scotland),
+            "Northern Ireland" => Some(Country::NorthernIreland),
+            "U.S.A." => Some(Country::UnitedStatesOfAmerica),
+            "USA" => Some(Country::UnitedStatesOfAmerica),
+            "Ukraine" => Some(Country::Ukraine),
+            _ => None,
         }
     }
 }
@@ -341,10 +551,7 @@ fn parse_metadata(line: &str) -> Result<(Country, NaiveDate), ImportError> {
         .next()
         .map(str::trim)
         .ok_or(ImportError::InvalidMetadata)?;
-    let country = match country_name {
-        "Germany" => Country::Germany,
-        _ => return Err(ImportError::UnknownCountry),
-    };
+    let country = Country::from_name(country_name).ok_or(ImportError::UnknownCountry)?;
 
     let last_modified = line
         .split("Last modified:")
@@ -860,5 +1067,14 @@ mod tests {
         let result = Table::<Year, Age, Sex, f64>::load(input.as_bytes());
 
         assert!(matches!(result, Err(ImportError::InvalidAge)));
+    }
+
+    #[test]
+    fn parses_non_germany_country_metadata() {
+        let input = "Australia, Births\tLast modified: 03 Jun 2022;  Methods Protocol: v6 (2017)\n\nYear Female Male Total\n1990 10 11 21\n";
+        let table = Table::<Year, Empty, Sex, Births>::load(input.as_bytes()).unwrap();
+
+        assert_eq!(table.country.code(), "AUS");
+        assert_eq!(table.country, Country::Australia);
     }
 }
