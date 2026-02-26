@@ -27,4 +27,4 @@ pub type LifeExpectanciesAtBirth<Y> =
 /// Central death rates indexed by year, age, and sex.
 pub type CentralDeathRates<Y, A> = Table<Y, A, covariates::Sex, values::CentralDeathRate>;
 
-pub use self::table::{Country, Empty, Index, Range, Table};
+pub use self::table::{Country, Empty, Index, Range, Single, Table};

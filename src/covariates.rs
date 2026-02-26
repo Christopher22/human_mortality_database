@@ -1,5 +1,8 @@
 //! Covariates for querying the Human Mortality Database.
 
+/// A type that can be used as a covariate value in table indices.
+pub trait Covariate: Copy + Ord {}
+
 /// Age in years between 0 and 120+.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Age(u8);
@@ -80,3 +83,8 @@ impl std::fmt::Display for Sex {
         }
     }
 }
+
+impl Covariate for Age {}
+impl Covariate for Year {}
+impl Covariate for Sex {}
+impl Covariate for () {}

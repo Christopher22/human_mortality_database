@@ -1,5 +1,20 @@
 //! Values available in the Human Mortality Database, such as population size, exposure to risk, and life expectancy at birth.
 
+/// Parsing error for scalar/value cells.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ValueError {
+    /// The source token cannot be parsed as a number.
+    InvalidNumber,
+    /// The parsed number violates semantic constraints.
+    InvalidValue,
+}
+
+/// A value that can be parsed from a table cell.
+pub trait Value: Sized {
+    /// Parse a value from a single cell token.
+    fn parse_value(token: &str) -> Result<Self, ValueError>;
+}
+
 /// The size of the population.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PopulationSize(usize);
@@ -53,6 +68,15 @@ macro_rules! non_negative_f64_value {
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{:.2}", self.0)
+            }
+        }
+
+        impl Value for $name {
+            fn parse_value(token: &str) -> Result<Self, ValueError> {
+                let value = token
+                    .parse::<f64>()
+                    .map_err(|_| ValueError::InvalidNumber)?;
+                Self::try_from(value).map_err(|_| ValueError::InvalidValue)
             }
         }
     };
@@ -164,3 +188,26 @@ impl std::fmt::Display for InvalidValueError {
 }
 
 impl std::error::Error for InvalidValueError {}
+
+impl Value for f64 {
+    fn parse_value(token: &str) -> Result<Self, ValueError> {
+        token.parse::<f64>().map_err(|_| ValueError::InvalidNumber)
+    }
+}
+
+impl Value for usize {
+    fn parse_value(token: &str) -> Result<Self, ValueError> {
+        token
+            .parse::<usize>()
+            .map_err(|_| ValueError::InvalidNumber)
+    }
+}
+
+impl Value for PopulationSize {
+    fn parse_value(token: &str) -> Result<Self, ValueError> {
+        token
+            .parse::<usize>()
+            .map(PopulationSize::from)
+            .map_err(|_| ValueError::InvalidNumber)
+    }
+}

@@ -4,17 +4,13 @@ use std::io::BufRead;
 
 use chrono::NaiveDate;
 
-use crate::covariates::{Age, Sex, Year};
-use crate::values::{
-    AveragePersonYearsLived, Births, CentralDeathRate, Deaths, ExposureToRisk,
-    LifeExpectancyAtBirth, LifeTableRow, NumberAlive, NumberDying, PersonYearsLived,
-    PopulationSize, ProbabilityOfDying, RemainingLifeExpectancy, TotalPersonYearsLived,
-};
+use crate::covariates::{Age, Covariate, Sex, Year};
+use crate::values::{LifeTableRow, Value, ValueError};
 
 /// A trait for types that can be used as indices in the table.
 pub trait Index: Copy + Ord {
     /// The type of the index value.
-    type Value: Copy + Ord;
+    type Value: Covariate;
     /// The type of the container that holds the values associated with the index.
     type Container<T>;
 
@@ -23,25 +19,17 @@ pub trait Index: Copy + Ord {
     fn find<T>(values: &Self::Container<T>, value: Self::Value) -> Option<&T>;
 }
 
-impl Index for Age {
-    type Value = Age;
-    type Container<T> = Vec<(Self, T)>;
+/// A single indexed value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Single<T: Covariate>(pub T);
 
-    fn find<T>(values: &Self::Container<T>, value: Self) -> Option<&T> {
+impl<T: Covariate> Index for Single<T> {
+    type Value = T;
+    type Container<U> = Vec<(Self, U)>;
+
+    fn find<U>(values: &Self::Container<U>, value: T) -> Option<&U> {
         values
-            .binary_search_by_key(&value, |(index, _)| *index)
-            .ok()
-            .map(|index| &values[index].1)
-    }
-}
-
-impl Index for Year {
-    type Value = Year;
-    type Container<T> = Vec<(Self, T)>;
-
-    fn find<T>(values: &Self::Container<T>, value: Self) -> Option<&T> {
-        values
-            .binary_search_by_key(&value, |(index, _)| *index)
+            .binary_search_by_key(&value, |(index, _)| index.0)
             .ok()
             .map(|index| &values[index].1)
     }
@@ -61,35 +49,35 @@ impl Index for Sex {
 
 /// A range of values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Range<T: Index, const N: usize> {
-    start: T::Value,
-    end: T::Value,
+pub struct Range<T: Covariate, const N: usize> {
+    start: T,
+    end: T,
 }
 
-impl<T: Index, const N: usize> Range<T, N> {
+impl<T: Covariate, const N: usize> Range<T, N> {
     /// Check if the range contains the given value.
-    pub fn contains(&self, value: T::Value) -> bool {
+    pub fn contains(&self, value: T) -> bool {
         self.start <= value && value <= self.end
     }
 }
 
-impl<T: Index, const N: usize> PartialOrd for Range<T, N> {
+impl<T: Covariate, const N: usize> PartialOrd for Range<T, N> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<T: Index, const N: usize> Ord for Range<T, N> {
+impl<T: Covariate, const N: usize> Ord for Range<T, N> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.start.cmp(&other.start)
     }
 }
 
-impl<T: Index, const N: usize> Index for Range<T, N> {
-    type Value = T::Value;
+impl<T: Covariate, const N: usize> Index for Range<T, N> {
+    type Value = T;
     type Container<I> = Vec<(Self, I)>;
 
-    fn find<U>(values: &Self::Container<U>, value: T::Value) -> Option<&U> {
+    fn find<U>(values: &Self::Container<U>, value: T) -> Option<&U> {
         values
             .binary_search_by(|(range, _)| {
                 if range.contains(value) {
@@ -359,9 +347,9 @@ impl<Y: Index, A: Index, S: Index, D> Table<Y, A, S, D> {
     #[allow(private_bounds)]
     pub fn load<R: std::io::Read>(reader: R) -> Result<Self, ImportError>
     where
-        Y: ParseIndex + IndexContainer,
-        A: ParseIndex + IndexContainer,
-        D: ParseData<S>,
+        Y: TableIndex,
+        A: TableIndex,
+        D: DataParser<S>,
     {
         load_impl::<Y, A, S, D, R>(reader)
     }
@@ -376,11 +364,11 @@ impl<Y: Index, A: Index, S: Index, D> Table<Y, A, S, D> {
 
 fn load_impl<Y, A, S, D, R>(reader: R) -> Result<Table<Y, A, S, D>, ImportError>
 where
-    Y: Index + ParseIndex + IndexContainer,
-    A: Index + ParseIndex + IndexContainer,
+    Y: TableIndex,
+    A: TableIndex,
     S: Index,
     R: std::io::Read,
-    D: ParseData<S>,
+    D: DataParser<S>,
 {
     let mut non_empty_lines = std::io::BufReader::new(reader)
         .lines()
@@ -585,20 +573,28 @@ fn parse_age_token(token: &str) -> Result<Age, ImportError> {
     Age::try_from(age).map_err(|_| ImportError::InvalidAge)
 }
 
-fn parse_required_value<D: ParseScalar>(
+fn map_value_error(error: ValueError) -> ImportError {
+    match error {
+        ValueError::InvalidNumber => ImportError::InvalidNumber,
+        ValueError::InvalidValue => ImportError::InvalidValue,
+    }
+}
+
+fn parse_required_value<D: Value>(
     header: &Header,
     fields: &[&str],
     column: &str,
 ) -> Result<D, ImportError> {
     let index = header.require(column)?;
-    D::parse_scalar(fields[index])
+    D::parse_value(fields[index]).map_err(map_value_error)
 }
 
-trait ParseIndex: Index {
+trait TableIndex: Index {
     fn parse(token: Option<&str>, field: &str) -> Result<Self, ImportError>;
+    fn from_btree<T>(map: BTreeMap<Self, T>) -> Result<Self::Container<T>, ImportError>;
 }
 
-impl ParseIndex for Year {
+impl TableIndex for Single<Year> {
     fn parse(token: Option<&str>, field: &str) -> Result<Self, ImportError> {
         if field != "year" {
             return Err(ImportError::InvalidYear);
@@ -607,33 +603,45 @@ impl ParseIndex for Year {
         token
             .parse::<u16>()
             .map(Year)
+            .map(Single)
             .map_err(|_| ImportError::InvalidYear)
+    }
+
+    fn from_btree<T>(map: BTreeMap<Self, T>) -> Result<Self::Container<T>, ImportError> {
+        Ok(map.into_iter().collect())
     }
 }
 
-impl<const N: usize> ParseIndex for Range<Year, N> {
+impl<const N: usize> TableIndex for Range<Year, N> {
     fn parse(token: Option<&str>, field: &str) -> Result<Self, ImportError> {
         if field != "year" {
             return Err(ImportError::InvalidRange);
         }
-        parse_numeric_range(token.ok_or(ImportError::MissingColumn)?).map(|(start, end)| {
-            let start = Year(start);
-            let end = Year(end);
-            Self { start, end }
+        parse_numeric_range(token.ok_or(ImportError::MissingColumn)?).map(|(start, end)| Self {
+            start: Year(start),
+            end: Year(end),
         })
+    }
+
+    fn from_btree<T>(map: BTreeMap<Self, T>) -> Result<Self::Container<T>, ImportError> {
+        Ok(map.into_iter().collect())
     }
 }
 
-impl ParseIndex for Age {
+impl TableIndex for Single<Age> {
     fn parse(token: Option<&str>, field: &str) -> Result<Self, ImportError> {
         if field != "age" {
             return Err(ImportError::InvalidAge);
         }
-        parse_age_token(token.ok_or(ImportError::MissingColumn)?)
+        parse_age_token(token.ok_or(ImportError::MissingColumn)?).map(Single)
+    }
+
+    fn from_btree<T>(map: BTreeMap<Self, T>) -> Result<Self::Container<T>, ImportError> {
+        Ok(map.into_iter().collect())
     }
 }
 
-impl<const N: usize> ParseIndex for Range<Age, N> {
+impl<const N: usize> TableIndex for Range<Age, N> {
     fn parse(token: Option<&str>, field: &str) -> Result<Self, ImportError> {
         if field != "age" {
             return Err(ImportError::InvalidRange);
@@ -665,207 +673,46 @@ impl<const N: usize> ParseIndex for Range<Age, N> {
         let end = Age::try_from(end).map_err(|_| ImportError::InvalidAge)?;
         Ok(Self { start, end })
     }
+
+    fn from_btree<T>(map: BTreeMap<Self, T>) -> Result<Self::Container<T>, ImportError> {
+        Ok(map.into_iter().collect())
+    }
 }
 
-impl ParseIndex for Empty {
+impl TableIndex for Empty {
     fn parse(_token: Option<&str>, _field: &str) -> Result<Self, ImportError> {
         Ok(Empty)
     }
-}
 
-trait IndexContainer: Index {
-    fn from_btree<T>(map: BTreeMap<Self, T>) -> Result<Self::Container<T>, ImportError>;
-}
-
-impl IndexContainer for Year {
-    fn from_btree<T>(map: BTreeMap<Self, T>) -> Result<Self::Container<T>, ImportError> {
-        Ok(map.into_iter().collect())
-    }
-}
-
-impl IndexContainer for Age {
-    fn from_btree<T>(map: BTreeMap<Self, T>) -> Result<Self::Container<T>, ImportError> {
-        Ok(map.into_iter().collect())
-    }
-}
-
-impl<const N: usize> IndexContainer for Range<Year, N> {
-    fn from_btree<T>(map: BTreeMap<Self, T>) -> Result<Self::Container<T>, ImportError> {
-        Ok(map.into_iter().collect())
-    }
-}
-
-impl<const N: usize> IndexContainer for Range<Age, N> {
-    fn from_btree<T>(map: BTreeMap<Self, T>) -> Result<Self::Container<T>, ImportError> {
-        Ok(map.into_iter().collect())
-    }
-}
-
-impl IndexContainer for Empty {
     fn from_btree<T>(map: BTreeMap<Self, T>) -> Result<Self::Container<T>, ImportError> {
         map.into_values().next().ok_or(ImportError::EmptyInput)
     }
 }
 
-trait ParseData<S: Index>: Sized {
+trait DataParser<S: Index>: Sized {
     fn parse_data(header: &Header, fields: &[&str]) -> Result<S::Container<Self>, ImportError>;
 }
 
-pub trait ParseScalar: Sized {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError>;
-}
-
-impl ParseScalar for f64 {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        token.parse::<f64>().map_err(|_| ImportError::InvalidNumber)
-    }
-}
-
-impl ParseScalar for usize {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        token
-            .parse::<usize>()
-            .map_err(|_| ImportError::InvalidNumber)
-    }
-}
-
-impl ParseScalar for PopulationSize {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        token
-            .parse::<usize>()
-            .map(PopulationSize::from)
-            .map_err(|_| ImportError::InvalidNumber)
-    }
-}
-
-impl ParseScalar for ExposureToRisk {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        let value = token
-            .parse::<f64>()
-            .map_err(|_| ImportError::InvalidNumber)?;
-        Self::try_from(value).map_err(|_| ImportError::InvalidValue)
-    }
-}
-
-impl ParseScalar for Births {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        let value = token
-            .parse::<f64>()
-            .map_err(|_| ImportError::InvalidNumber)?;
-        Self::try_from(value).map_err(|_| ImportError::InvalidValue)
-    }
-}
-
-impl ParseScalar for Deaths {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        let value = token
-            .parse::<f64>()
-            .map_err(|_| ImportError::InvalidNumber)?;
-        Self::try_from(value).map_err(|_| ImportError::InvalidValue)
-    }
-}
-
-impl ParseScalar for LifeExpectancyAtBirth {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        let value = token
-            .parse::<f64>()
-            .map_err(|_| ImportError::InvalidNumber)?;
-        Self::try_from(value).map_err(|_| ImportError::InvalidValue)
-    }
-}
-
-impl ParseScalar for CentralDeathRate {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        let value = token
-            .parse::<f64>()
-            .map_err(|_| ImportError::InvalidNumber)?;
-        Self::try_from(value).map_err(|_| ImportError::InvalidValue)
-    }
-}
-
-impl ParseScalar for ProbabilityOfDying {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        let value = token
-            .parse::<f64>()
-            .map_err(|_| ImportError::InvalidNumber)?;
-        Self::try_from(value).map_err(|_| ImportError::InvalidValue)
-    }
-}
-
-impl ParseScalar for AveragePersonYearsLived {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        let value = token
-            .parse::<f64>()
-            .map_err(|_| ImportError::InvalidNumber)?;
-        Self::try_from(value).map_err(|_| ImportError::InvalidValue)
-    }
-}
-
-impl ParseScalar for NumberAlive {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        let value = token
-            .parse::<f64>()
-            .map_err(|_| ImportError::InvalidNumber)?;
-        Self::try_from(value).map_err(|_| ImportError::InvalidValue)
-    }
-}
-
-impl ParseScalar for NumberDying {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        let value = token
-            .parse::<f64>()
-            .map_err(|_| ImportError::InvalidNumber)?;
-        Self::try_from(value).map_err(|_| ImportError::InvalidValue)
-    }
-}
-
-impl ParseScalar for PersonYearsLived {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        let value = token
-            .parse::<f64>()
-            .map_err(|_| ImportError::InvalidNumber)?;
-        Self::try_from(value).map_err(|_| ImportError::InvalidValue)
-    }
-}
-
-impl ParseScalar for TotalPersonYearsLived {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        let value = token
-            .parse::<f64>()
-            .map_err(|_| ImportError::InvalidNumber)?;
-        Self::try_from(value).map_err(|_| ImportError::InvalidValue)
-    }
-}
-
-impl ParseScalar for RemainingLifeExpectancy {
-    fn parse_scalar(token: &str) -> Result<Self, ImportError> {
-        let value = token
-            .parse::<f64>()
-            .map_err(|_| ImportError::InvalidNumber)?;
-        Self::try_from(value).map_err(|_| ImportError::InvalidValue)
-    }
-}
-
-impl<D: ParseScalar> ParseData<Sex> for D {
+impl<D: Value> DataParser<Sex> for D {
     fn parse_data(
         header: &Header,
         fields: &[&str],
     ) -> Result<<Sex as Index>::Container<Self>, ImportError> {
         let female = header.require("female")?;
         let male = header.require("male")?;
-        let female = D::parse_scalar(fields[female])?;
-        let male = D::parse_scalar(fields[male])?;
+        let female = D::parse_value(fields[female]).map_err(map_value_error)?;
+        let male = D::parse_value(fields[male]).map_err(map_value_error)?;
         Ok([(Sex::Female, female), (Sex::Male, male)])
     }
 }
 
-impl<D: ParseScalar> ParseData<Empty> for D {
+impl<D: Value> DataParser<Empty> for D {
     fn parse_data(
         header: &Header,
         fields: &[&str],
     ) -> Result<<Empty as Index>::Container<Self>, ImportError> {
         if let Some(total) = header.find("total") {
-            return D::parse_scalar(fields[total]);
+            return D::parse_value(fields[total]).map_err(map_value_error);
         }
 
         let data_columns = header
@@ -885,11 +732,11 @@ impl<D: ParseScalar> ParseData<Empty> for D {
             return Err(ImportError::MissingColumn);
         }
 
-        D::parse_scalar(fields[data_columns[0]])
+        D::parse_value(fields[data_columns[0]]).map_err(map_value_error)
     }
 }
 
-impl ParseData<Empty> for LifeTableRow {
+impl DataParser<Empty> for LifeTableRow {
     fn parse_data(
         header: &Header,
         fields: &[&str],
@@ -910,12 +757,12 @@ impl ParseData<Empty> for LifeTableRow {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::values::{Births, Deaths, LifeTableRow};
+    use crate::values::{Births, Deaths, ExposureToRisk, LifeExpectancyAtBirth, LifeTableRow};
 
     #[test]
     fn loads_births_1x1_with_sex_dimension() {
         let input = "Germany,  Births (1-year)\tLast modified: 03 Jun 2022;  Methods Protocol: v6 (2017)\n\nYear Female Male Total\n1990 10 11 21\n1991 12 13 25\n";
-        let table = Table::<Year, Empty, Sex, Births>::load(input.as_bytes()).unwrap();
+        let table = Table::<Single<Year>, Empty, Sex, Births>::load(input.as_bytes()).unwrap();
 
         assert_eq!(table.country, Country::Germany);
         assert_eq!(
@@ -940,7 +787,7 @@ mod tests {
     #[test]
     fn loads_mx_1x1_with_open_age_group() {
         let input = "Germany, Death rates (period 1x1),\tLast modified: 03 Jun 2022;  Methods Protocol: v6 (2017)\n\nYear Age Female Male Total\n1990 0 0.10 0.20 0.15\n1990 110+ 1.10 1.20 1.15\n";
-        let table = Table::<Year, Age, Sex, f64>::load(input.as_bytes()).unwrap();
+        let table = Table::<Single<Year>, Single<Age>, Sex, f64>::load(input.as_bytes()).unwrap();
 
         assert_eq!(
             table.query(Year(1990), Age::try_from(0).unwrap(), Sex::Female),
@@ -955,7 +802,8 @@ mod tests {
     #[test]
     fn loads_deaths_1x5_with_year_ranges() {
         let input = "Germany, Deaths (period 1x5),\tLast modified: 03 Jun 2022;  Methods Protocol: v6 (2017)\n\nYear Age Female Male Total\n1990-1994 0 100.0 120.0 220.0\n1995-1999 0 110.0 130.0 240.0\n";
-        let table = Table::<Range<Year, 5>, Age, Sex, Deaths>::load(input.as_bytes()).unwrap();
+        let table =
+            Table::<Range<Year, 5>, Single<Age>, Sex, Deaths>::load(input.as_bytes()).unwrap();
 
         assert_eq!(
             table
@@ -974,7 +822,8 @@ mod tests {
     #[test]
     fn loads_deaths_5x1_with_age_ranges() {
         let input = "Germany, Deaths (period 5x1),\tLast modified: 03 Jun 2022;  Methods Protocol: v6 (2017)\n\nYear Age Female Male Total\n1990 0 100.0 120.0 220.0\n1990 1-4 200.0 220.0 420.0\n1991 1-4 210.0 230.0 440.0\n";
-        let table = Table::<Year, Range<Age, 5>, Sex, Deaths>::load(input.as_bytes()).unwrap();
+        let table =
+            Table::<Single<Year>, Range<Age, 5>, Sex, Deaths>::load(input.as_bytes()).unwrap();
 
         assert_eq!(
             table
@@ -1009,7 +858,8 @@ mod tests {
     fn loads_fltper_1x10_life_table_rows() {
         let input = "Germany, Life tables (period 1x10), Females\tLast modified: 03 Jun 2022;  Methods Protocol: v6 (2017)\n\nYear Age mx qx ax lx dx Lx Tx ex\n1990-1999 0 0.01 0.02 0.14 100000 2000 99500 7900000 79.0\n1990-1999 1 0.02 0.03 0.50 98000 3000 96500 7800500 78.0\n";
         let table =
-            Table::<Range<Year, 10>, Age, Empty, LifeTableRow>::load(input.as_bytes()).unwrap();
+            Table::<Range<Year, 10>, Single<Age>, Empty, LifeTableRow>::load(input.as_bytes())
+                .unwrap();
 
         let row = table
             .query(Year(1995), Age::try_from(1).unwrap(), ())
@@ -1022,7 +872,8 @@ mod tests {
     #[test]
     fn loads_bltper_1x1_life_table_rows() {
         let input = "Germany, Life tables (period 1x1), Total\tLast modified: 03 Jun 2022;  Methods Protocol: v6 (2017)\n\nYear Age mx qx ax lx dx Lx Tx ex\n1990 0 0.01 0.02 0.14 100000 2000 99500 7900000 79.0\n1991 0 0.02 0.03 0.14 100000 3000 98500 7800500 78.0\n";
-        let table = Table::<Year, Age, Empty, LifeTableRow>::load(input.as_bytes()).unwrap();
+        let table = Table::<Single<Year>, Single<Age>, Empty, LifeTableRow>::load(input.as_bytes())
+            .unwrap();
 
         assert_eq!(
             table
@@ -1035,7 +886,9 @@ mod tests {
     #[test]
     fn parses_total_column_for_empty_sex_dimension() {
         let input = "Germany, Exposure table\tLast modified: 03 Jun 2022;  Methods Protocol: v6 (2017)\n\nYear Age Female Male Total\n1990 0 10.00 11.00 10.50\n";
-        let table = Table::<Year, Age, Empty, ExposureToRisk>::load(input.as_bytes()).unwrap();
+        let table =
+            Table::<Single<Year>, Single<Age>, Empty, ExposureToRisk>::load(input.as_bytes())
+                .unwrap();
 
         assert_eq!(
             table
@@ -1048,7 +901,7 @@ mod tests {
     #[test]
     fn rejects_duplicate_entries() {
         let input = "Germany, Births\tLast modified: 03 Jun 2022;  Methods Protocol: v6 (2017)\n\nYear Female Male Total\n1990 10 11 21\n1990 12 13 25\n";
-        let result = Table::<Year, Empty, Sex, Births>::load(input.as_bytes());
+        let result = Table::<Single<Year>, Empty, Sex, Births>::load(input.as_bytes());
 
         assert!(matches!(result, Err(ImportError::DuplicateEntry)));
     }
@@ -1056,7 +909,7 @@ mod tests {
     #[test]
     fn rejects_missing_required_column() {
         let input = "Germany, Births\tLast modified: 03 Jun 2022;  Methods Protocol: v6 (2017)\n\nYear Male Total\n1990 11 21\n";
-        let result = Table::<Year, Empty, Sex, usize>::load(input.as_bytes());
+        let result = Table::<Single<Year>, Empty, Sex, usize>::load(input.as_bytes());
 
         assert!(matches!(result, Err(ImportError::MissingColumn)));
     }
@@ -1064,7 +917,7 @@ mod tests {
     #[test]
     fn rejects_invalid_age_token() {
         let input = "Germany, Death rates\tLast modified: 03 Jun 2022;  Methods Protocol: v6 (2017)\n\nYear Age Female Male Total\n1990 130 1.0 2.0 1.5\n";
-        let result = Table::<Year, Age, Sex, f64>::load(input.as_bytes());
+        let result = Table::<Single<Year>, Single<Age>, Sex, f64>::load(input.as_bytes());
 
         assert!(matches!(result, Err(ImportError::InvalidAge)));
     }
@@ -1072,7 +925,7 @@ mod tests {
     #[test]
     fn parses_non_germany_country_metadata() {
         let input = "Australia, Births\tLast modified: 03 Jun 2022;  Methods Protocol: v6 (2017)\n\nYear Female Male Total\n1990 10 11 21\n";
-        let table = Table::<Year, Empty, Sex, Births>::load(input.as_bytes()).unwrap();
+        let table = Table::<Single<Year>, Empty, Sex, Births>::load(input.as_bytes()).unwrap();
 
         assert_eq!(table.country.code(), "AUS");
         assert_eq!(table.country, Country::Australia);

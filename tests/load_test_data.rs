@@ -1,9 +1,12 @@
 use human_mortality_database::covariates::{Age, Sex, Year};
-use human_mortality_database::{Births, CentralDeathRates, Deaths, LifeExpectanciesAtBirth, Range};
+use human_mortality_database::{
+    Births, CentralDeathRates, Deaths, LifeExpectanciesAtBirth, Range, Single,
+};
 
 #[test]
 fn loads_births_txt() {
-    let table = Births::<Year>::load(include_str!("test_data/Births.txt").as_bytes()).unwrap();
+    let table =
+        Births::<Single<Year>>::load(include_str!("test_data/Births.txt").as_bytes()).unwrap();
 
     assert_eq!(
         table
@@ -15,9 +18,10 @@ fn loads_births_txt() {
 
 #[test]
 fn loads_deaths_1x5_txt() {
-    let table =
-        Deaths::<Range<Year, 5>, Age>::load(include_str!("test_data/Deaths_1x5.txt").as_bytes())
-            .unwrap();
+    let table = Deaths::<Range<Year, 5>, Single<Age>>::load(
+        include_str!("test_data/Deaths_1x5.txt").as_bytes(),
+    )
+    .unwrap();
 
     assert_eq!(
         table
@@ -29,9 +33,10 @@ fn loads_deaths_1x5_txt() {
 
 #[test]
 fn loads_deaths_5x1_txt() {
-    let table =
-        Deaths::<Year, Range<Age, 5>>::load(include_str!("test_data/Deaths_5x1.txt").as_bytes())
-            .unwrap();
+    let table = Deaths::<Single<Year>, Range<Age, 5>>::load(
+        include_str!("test_data/Deaths_5x1.txt").as_bytes(),
+    )
+    .unwrap();
 
     assert_eq!(
         table
@@ -58,9 +63,10 @@ fn loads_e0per_1x10_txt() {
 
 #[test]
 fn loads_mx_1x1_txt() {
-    let table =
-        CentralDeathRates::<Year, Age>::load(include_str!("test_data/Mx_1x1.txt").as_bytes())
-            .unwrap();
+    let table = CentralDeathRates::<Single<Year>, Single<Age>>::load(
+        include_str!("test_data/Mx_1x1.txt").as_bytes(),
+    )
+    .unwrap();
 
     assert_eq!(
         table
