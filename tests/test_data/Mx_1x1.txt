@@ -1,0 +1,6 @@
+Germany, Death rates (period 1x1), 	Last modified: 03 Jun 2022;  Methods Protocol: v6 (2017)
+
+  Year          Age             Female            Male           Total
+  1990           0             0.006102        0.008085        0.007119
+  1990           1             0.000616        0.000676        0.000647
+  1990           2             0.000355        0.000462        0.000410

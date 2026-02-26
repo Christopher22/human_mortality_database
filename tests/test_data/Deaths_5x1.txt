@@ -1,0 +1,6 @@
+Germany, Deaths (period 5x1), 	Last modified: 03 Jun 2022;  Methods Protocol: v6 (2017)
+
+  Year          Age             Female            Male           Total
+  1990           0              2665.01         3720.02         6385.03
+  1990         1-4               647.00          848.00         1495.00
+  1990         5-9               408.00          532.00          940.00

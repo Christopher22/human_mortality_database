@@ -22,6 +22,9 @@ pub type Deaths<Y, A> = Table<Y, A, covariates::Sex, values::Deaths>;
 /// Life table rows indexed by year and age.
 pub type LifeTable<Y, A> = Table<Y, A, Empty, values::LifeTableRow>;
 /// Life expectancy at birth indexed by year and sex.
-pub type LifeExpectancyAtBirth<Y> = Table<Y, Empty, covariates::Sex, values::LifeExpectancyAtBirth>;
+pub type LifeExpectanciesAtBirth<Y> =
+    Table<Y, Empty, covariates::Sex, values::LifeExpectancyAtBirth>;
+/// Central death rates indexed by year, age, and sex.
+pub type CentralDeathRates<Y, A> = Table<Y, A, covariates::Sex, values::CentralDeathRate>;
 
 pub use self::table::{Country, Empty, Index, Range, Table};
