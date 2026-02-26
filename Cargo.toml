@@ -8,3 +8,4 @@ readme = "README.md"
 description = "Query the Human Mortality Database"
 
 [dependencies]
+chrono = "0.4.44"
