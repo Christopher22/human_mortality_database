@@ -300,3 +300,4 @@ pyrightconfig.json
 
 /target
 example_data/*
+.cargo

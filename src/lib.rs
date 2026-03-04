@@ -12,6 +12,7 @@
 //! Rust library for querying the Human Mortality Database.
 
 pub mod covariates;
+mod download;
 mod table;
 pub mod values;
 
@@ -27,4 +28,5 @@ pub type LifeExpectanciesAtBirth<Y> =
 /// Central death rates indexed by year, age, and sex.
 pub type CentralDeathRates<Y, A> = Table<Y, A, covariates::Sex, values::CentralDeathRate>;
 
+pub use self::download::{DownloadableTable, Error as DownloadError, Session};
 pub use self::table::{Country, Empty, Index, Range, Single, Table};

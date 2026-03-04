@@ -13,6 +13,8 @@ pub trait Index: Copy + Ord {
     type Value: Covariate;
     /// The type of the container that holds the values associated with the index.
     type Container<T>;
+    /// The number of elements represented by one index key.
+    const ELEMENTS: usize;
 
     /// Finds the value associated with the given index value.
     /// The list of values must be sorted by the index value and its elements should be unique.
@@ -26,6 +28,7 @@ pub struct Single<T: Covariate>(pub T);
 impl<T: Covariate> Index for Single<T> {
     type Value = T;
     type Container<U> = Vec<(Self, U)>;
+    const ELEMENTS: usize = 1;
 
     fn find<U>(values: &Self::Container<U>, value: T) -> Option<&U> {
         values
@@ -38,6 +41,7 @@ impl<T: Covariate> Index for Single<T> {
 impl Index for Sex {
     type Value = Self;
     type Container<T> = [(Self, T); 2];
+    const ELEMENTS: usize = 2;
 
     fn find<T>(values: &Self::Container<T>, value: Self) -> Option<&T> {
         match value {
@@ -76,6 +80,7 @@ impl<T: Covariate, const N: usize> Ord for Range<T, N> {
 impl<T: Covariate, const N: usize> Index for Range<T, N> {
     type Value = T;
     type Container<I> = Vec<(Self, I)>;
+    const ELEMENTS: usize = N;
 
     fn find<U>(values: &Self::Container<U>, value: T) -> Option<&U> {
         values
@@ -99,6 +104,7 @@ pub struct Empty;
 impl Index for Empty {
     type Value = ();
     type Container<T> = T;
+    const ELEMENTS: usize = 1;
 
     fn find<T>(values: &T, _value: Self::Value) -> Option<&T> {
         Some(values)
@@ -589,7 +595,7 @@ fn parse_required_value<D: Value>(
     D::parse_value(fields[index]).map_err(map_value_error)
 }
 
-trait TableIndex: Index {
+pub(crate) trait TableIndex: Index {
     fn parse(token: Option<&str>, field: &str) -> Result<Self, ImportError>;
     fn from_btree<T>(map: BTreeMap<Self, T>) -> Result<Self::Container<T>, ImportError>;
 }
