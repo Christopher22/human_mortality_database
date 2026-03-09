@@ -1,0 +1,13 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "human_mortality_database"
+version = "0.1.0"
+description = "High-performance Python bindings for human_mortality_database"
+requires-python = ">=3.9"
+
+[tool.maturin]
+features = ["python"]
+module-name = "human_mortality_database"

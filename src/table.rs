@@ -283,6 +283,63 @@ impl Country {
         }
     }
 
+    /// Parse a country from its HMD code.
+    pub fn from_code(code: &str) -> Option<Self> {
+        match code.trim().to_ascii_uppercase().as_str() {
+            "AUS" => Some(Country::Australia),
+            "AUT" => Some(Country::Austria),
+            "BLR" => Some(Country::Belarus),
+            "BEL" => Some(Country::Belgium),
+            "BGR" => Some(Country::Bulgaria),
+            "CAN" => Some(Country::Canada),
+            "CHL" => Some(Country::Chile),
+            "HRV" => Some(Country::Croatia),
+            "CZE" => Some(Country::Czechia),
+            "DNK" => Some(Country::Denmark),
+            "EST" => Some(Country::Estonia),
+            "FIN" => Some(Country::Finland),
+            "FRATNP" => Some(Country::FranceTotalPopulation),
+            "FRACNP" => Some(Country::FranceCivilianPopulation),
+            "DEUTNP" => Some(Country::Germany),
+            "DEUTE" => Some(Country::EastGermany),
+            "DEUTW" => Some(Country::WestGermany),
+            "GRC" => Some(Country::Greece),
+            "HKG" => Some(Country::HongKong),
+            "HUN" => Some(Country::Hungary),
+            "ISL" => Some(Country::Iceland),
+            "IRL" => Some(Country::Ireland),
+            "ISR" => Some(Country::Israel),
+            "ITA" => Some(Country::Italy),
+            "JPN" => Some(Country::Japan),
+            "LVA" => Some(Country::Latvia),
+            "LTU" => Some(Country::Lithuania),
+            "LUX" => Some(Country::Luxembourg),
+            "NLD" => Some(Country::Netherlands),
+            "NZL_NP" => Some(Country::NewZealandTotalPopulation),
+            "NZL_MA" => Some(Country::NewZealandMaori),
+            "NZL_NM" => Some(Country::NewZealandNonMaori),
+            "NOR" => Some(Country::Norway),
+            "POL" => Some(Country::Poland),
+            "PRT" => Some(Country::Portugal),
+            "KOR" => Some(Country::RepublicOfKorea),
+            "RUS" => Some(Country::Russia),
+            "SVK" => Some(Country::Slovakia),
+            "SVN" => Some(Country::Slovenia),
+            "ESP" => Some(Country::Spain),
+            "SWE" => Some(Country::Sweden),
+            "CHE" => Some(Country::Switzerland),
+            "TWN" => Some(Country::Taiwan),
+            "GBR_NP" => Some(Country::UnitedKingdomTotalPopulation),
+            "GBRTENW" => Some(Country::EnglandAndWalesTotalPopulation),
+            "GBRCENW" => Some(Country::EnglandAndWalesCivilianPopulation),
+            "GBR_SCO" => Some(Country::Scotland),
+            "GBR_NIR" => Some(Country::NorthernIreland),
+            "USA" => Some(Country::UnitedStatesOfAmerica),
+            "UKR" => Some(Country::Ukraine),
+            _ => None,
+        }
+    }
+
     fn from_name(country_name: &str) -> Option<Self> {
         match country_name {
             "Australia" => Some(Country::Australia),

@@ -84,6 +84,34 @@ impl std::fmt::Display for Sex {
     }
 }
 
+impl std::str::FromStr for Sex {
+    type Err = ParseSexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let normalized = s.trim();
+        if normalized.eq_ignore_ascii_case("male") || normalized.eq_ignore_ascii_case("m") {
+            Ok(Self::Male)
+        } else if normalized.eq_ignore_ascii_case("female") || normalized.eq_ignore_ascii_case("f")
+        {
+            Ok(Self::Female)
+        } else {
+            Err(ParseSexError)
+        }
+    }
+}
+
+/// A sex token could not be parsed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ParseSexError;
+
+impl std::fmt::Display for ParseSexError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Sex must be one of: male, female, m, f")
+    }
+}
+
+impl std::error::Error for ParseSexError {}
+
 impl Covariate for Age {}
 impl Covariate for Year {}
 impl Covariate for Sex {}

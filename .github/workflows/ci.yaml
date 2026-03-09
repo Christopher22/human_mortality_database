@@ -30,9 +30,18 @@ jobs:
           - stable
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
       - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - run: cargo build --verbose
       - run: cargo test --all --verbose
+      - name: Python binding integration tests
+        run: |
+          python3 -m pip install --upgrade pip maturin
+          python3 -m maturin build --release --features python
+          python3 -m pip install --force-reinstall target/wheels/*.whl
+          python3 tests/python_binding_integration.py
       - run: cargo clippy --all -- -D warnings
   publish-docs:
     name: Publish Docs

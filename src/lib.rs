@@ -11,6 +11,8 @@
 )]
 //! Rust library for querying the Human Mortality Database.
 
+#[cfg(feature = "python")]
+mod binding;
 pub mod covariates;
 mod download;
 mod table;
