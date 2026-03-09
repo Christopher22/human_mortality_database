@@ -21,6 +21,9 @@ pub trait Index: Copy + Ord {
     fn find<T>(values: &Self::Container<T>, value: Self::Value) -> Option<&T>;
 }
 
+/// A trait for indices that actually contain values.
+pub trait NonEmptyIndex: Index {}
+
 /// A single indexed value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Single<T: Covariate>(pub T);
@@ -38,6 +41,8 @@ impl<T: Covariate> Index for Single<T> {
     }
 }
 
+impl<T: Covariate> NonEmptyIndex for Single<T> {}
+
 impl Index for Sex {
     type Value = Self;
     type Container<T> = [(Self, T); 2];
@@ -50,6 +55,8 @@ impl Index for Sex {
         }
     }
 }
+
+impl NonEmptyIndex for Sex {}
 
 /// A range of values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -97,6 +104,8 @@ impl<T: Covariate, const N: usize> Index for Range<T, N> {
             .map(|index| &values[index].1)
     }
 }
+
+impl<T: Covariate, const N: usize> NonEmptyIndex for Range<T, N> {}
 
 /// An empty index.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -365,6 +374,50 @@ impl<Y: Index, A: Index, S: Index, D> Table<Y, A, S, D> {
         Y::find(&self.data, year)
             .and_then(|ages| A::find(ages, age))
             .and_then(|sexes| S::find(sexes, sex))
+    }
+}
+
+impl<Y: NonEmptyIndex + TableIndex, A: NonEmptyIndex + TableIndex, S: Index, D: DataParser<S>>
+    std::ops::Index<(Y::Value, A::Value, S::Value)> for Table<Y, A, S, D>
+{
+    type Output = D;
+
+    fn index(&self, (year, age, sex): (Y::Value, A::Value, S::Value)) -> &Self::Output {
+        self.query(year, age, sex).expect("not found")
+    }
+}
+
+impl<Y: NonEmptyIndex + TableIndex, A: NonEmptyIndex + TableIndex, D: DataParser<Empty>>
+    std::ops::Index<(Y::Value, A::Value)> for Table<Y, A, Empty, D>
+{
+    type Output = D;
+
+    fn index(&self, (year, age): (Y::Value, A::Value)) -> &Self::Output {
+        Y::find(&self.data, year)
+            .and_then(|ages| A::find(ages, age))
+            .expect("not found")
+    }
+}
+
+impl<Y: NonEmptyIndex + TableIndex, S: NonEmptyIndex, D: DataParser<S>>
+    std::ops::Index<(Y::Value, S::Value)> for Table<Y, Empty, S, D>
+{
+    type Output = D;
+
+    fn index(&self, (year, sex): (Y::Value, S::Value)) -> &Self::Output {
+        Y::find(&self.data, year)
+            .and_then(|sexes| S::find(sexes, sex))
+            .expect("not found")
+    }
+}
+
+impl<Y: NonEmptyIndex + TableIndex, D: DataParser<Empty>> std::ops::Index<Y::Value>
+    for Table<Y, Empty, Empty, D>
+{
+    type Output = D;
+
+    fn index(&self, year: Y::Value) -> &Self::Output {
+        Y::find(&self.data, year).expect("not found")
     }
 }
 
@@ -935,5 +988,122 @@ mod tests {
 
         assert_eq!(table.country.code(), "AUS");
         assert_eq!(table.country, Country::Australia);
+    }
+
+    #[test]
+    fn index_operator_3d_year_age_sex() {
+        use crate::values::Births;
+
+        let input = "Germany, Births 1x1    Last modified: 03 Jun 2022\n\nYear Age Female Male Total\n1990 0 10 11 21\n1990 1 12 13 25\n";
+
+        let table =
+            Table::<Single<Year>, Single<Age>, Sex, Births>::load(input.as_bytes()).unwrap();
+
+        let age0 = Age::try_from(0).unwrap();
+        let age1 = Age::try_from(1).unwrap();
+
+        assert_eq!(f64::from(table[(Year(1990), age0, Sex::Female)]), 10.0);
+        assert_eq!(f64::from(table[(Year(1990), age0, Sex::Male)]), 11.0);
+        assert_eq!(f64::from(table[(Year(1990), age1, Sex::Female)]), 12.0);
+        assert_eq!(f64::from(table[(Year(1990), age1, Sex::Male)]), 13.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "not found")]
+    fn index_operator_3d_panics_if_missing() {
+        use crate::values::Births;
+
+        let input = "Germany, Births 1x1    Last modified: 03 Jun 2022\n\nYear Age Female Male Total\n1990 0 10 11 21\n";
+
+        let table =
+            Table::<Single<Year>, Single<Age>, Sex, Births>::load(input.as_bytes()).unwrap();
+
+        let bad_age = Age::try_from(5).unwrap();
+
+        let _ = table[(Year(1990), bad_age, Sex::Female)];
+    }
+
+    #[test]
+    fn index_operator_2d_year_age() {
+        use crate::values::LifeExpectancyAtBirth;
+
+        let input = "Germany, Life expectancy   Last modified: 03 Jun 2022\n\nYear Age ex\n1990 0 75.0\n1991 0 76.0\n";
+
+        let table = Table::<Single<Year>, Single<Age>, Empty, LifeExpectancyAtBirth>::load(
+            input.as_bytes(),
+        )
+        .unwrap();
+
+        let a0 = Age::try_from(0).unwrap();
+        assert_eq!(f64::from(table[(Year(1990), a0)]), 75.0);
+        assert_eq!(f64::from(table[(Year(1991), a0)]), 76.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "not found")]
+    fn index_operator_2d_year_age_panics() {
+        use crate::values::LifeExpectancyAtBirth;
+
+        let input =
+            "Germany, Life expectancy   Last modified: 03 Jun 2022\n\nYear Age ex\n1990 0 75.0\n";
+
+        let table = Table::<Single<Year>, Single<Age>, Empty, LifeExpectancyAtBirth>::load(
+            input.as_bytes(),
+        )
+        .unwrap();
+
+        let a0 = Age::try_from(0).unwrap();
+        let _ = table[(Year(1991), a0)];
+    }
+
+    #[test]
+    fn index_operator_2d_year_sex() {
+        use crate::values::Deaths;
+
+        let input = "Germany, Deaths   Last modified: 03 Jun 2022\n\nYear Female Male Total\n1990 100 120 220\n1991 110 130 240\n";
+
+        let table = Table::<Single<Year>, Empty, Sex, Deaths>::load(input.as_bytes()).unwrap();
+
+        assert_eq!(f64::from(table[(Year(1990), Sex::Female)]), 100.0);
+        assert_eq!(f64::from(table[(Year(1990), Sex::Male)]), 120.0);
+        assert_eq!(f64::from(table[(Year(1991), Sex::Female)]), 110.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "not found")]
+    fn index_operator_2d_year_sex_panics() {
+        use crate::values::Deaths;
+
+        let input = "Germany, Deaths   Last modified: 03 Jun 2022\n\nYear Female Male Total\n1990 100 120 220\n";
+
+        let table = Table::<Single<Year>, Empty, Sex, Deaths>::load(input.as_bytes()).unwrap();
+
+        let _ = table[(Year(1991), Sex::Female)];
+    }
+
+    #[test]
+    fn index_operator_1d_year_only() {
+        use crate::values::ExposureToRisk;
+
+        let input = "Germany, Exposure   Last modified: 03 Jun 2022\n\nYear Total\n1990 100.0\n1991 110.0\n";
+
+        let table =
+            Table::<Single<Year>, Empty, Empty, ExposureToRisk>::load(input.as_bytes()).unwrap();
+
+        assert_eq!(f64::from(table[Year(1990)]), 100.0);
+        assert_eq!(f64::from(table[Year(1991)]), 110.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "not found")]
+    fn index_operator_1d_year_panics() {
+        use crate::values::ExposureToRisk;
+
+        let input = "Germany, Exposure   Last modified: 03 Jun 2022\n\nYear Total\n1990 100.0\n";
+
+        let table =
+            Table::<Single<Year>, Empty, Empty, ExposureToRisk>::load(input.as_bytes()).unwrap();
+
+        let _ = table[Year(1991)];
     }
 }

@@ -20,8 +20,7 @@ let table: Births<Single<Year>> = session
 	.download(Country::Germany)
 	.unwrap();
 
-let female_births_1990 = table.query(Year(1990), (), Sex::Female);
-assert!(female_births_1990.is_some());
+let female_births_1990 = table[(Year(1990), Sex::Female)];
 ```
 
 The next example shows a grouped-year table where `Range<Year, 10>` is used as the year index type while queries still use a single year value.
@@ -35,7 +34,7 @@ let table: LifeExpectanciesAtBirth<Range<Year, 10>> = session
 	.download(Country::Germany)
 	.unwrap();
 
-let female_2004 = table.query(Year(2004), (), Sex::Female);
+let female_2004 = table[(Year(2004), Sex::Female)];
 assert!(female_2004.is_some());
 ```
 
