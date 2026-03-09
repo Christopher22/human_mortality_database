@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ["develop"]
+    branches: ["main"]
   pull_request:
-    branches: ["develop"]
+    branches: ["main"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -21,6 +21,9 @@ jobs:
   build_and_test:
     name: Rust project - latest
     runs-on: ubuntu-latest
+    env:
+      HMD_USERNAME: ${{ secrets.HMD_USERNAME }}
+      HMD_PASSWORD: ${{ secrets.HMD_PASSWORD }}
     strategy:
       matrix:
         toolchain:
