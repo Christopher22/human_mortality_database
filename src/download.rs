@@ -1,6 +1,10 @@
-pub use super::{Births, CentralDeathRates, Country, Deaths, LifeExpectanciesAtBirth, LifeTable};
+pub use super::{
+    Births, CentralDeathRates, Country, Deaths, Empty, LifeExpectanciesAtBirth, LifeTable,
+};
 
+use crate::covariates::Sex;
 use crate::table::{ImportError, Index, TableIndex};
+use crate::values::LifeTableRow;
 
 const BASE_URL: &str = "https://www.mortality.org";
 const LOGIN_ENDPOINT: &str = "/Account/Login";
@@ -107,13 +111,15 @@ where
     }
 }
 
-impl<Y, A> DownloadableTable for LifeTable<Y, A>
+/// The HMD publishes the combined-sexes period life table as `bltper`, matching how
+/// `LifeTable<Y, A>` (`S` defaulting to [`Empty`]) has no sex covariate.
+impl<Y, A> DownloadableTable for LifeTable<Y, A, Empty>
 where
     Y: Index + TableIndex,
     A: Index + TableIndex,
 {
     fn file_name() -> String {
-        format!("fltper_{}x{}", A::ELEMENTS, Y::ELEMENTS)
+        format!("bltper_{}x{}", A::ELEMENTS, Y::ELEMENTS)
     }
 
     fn download(session: &Session, country: Country) -> Result<Self, Error> {
@@ -121,6 +127,82 @@ where
         let content = session.download_file(country, &file_name)?;
         Self::load(content.as_slice()).map_err(Error::ImportError)
     }
+}
+
+#[allow(private_bounds)]
+impl<Y, A> LifeTable<Y, A, Sex>
+where
+    Y: Index + TableIndex,
+    A: Index + TableIndex,
+{
+    /// Download the period life table for the given country, indexed by sex.
+    ///
+    /// The HMD publishes `fltper` (female) and `mltper` (male) as separate files rather than as
+    /// columns within one file, so this fetches both and merges them into a single table. A row
+    /// missing from one sex's file (but present in the other) is treated the same as an
+    /// explicitly undefined (".") cell: `None`.
+    pub fn download(session: &Session, country: Country) -> Result<Self, Error> {
+        let female_file = format!("fltper_{}x{}", A::ELEMENTS, Y::ELEMENTS);
+        let male_file = format!("mltper_{}x{}", A::ELEMENTS, Y::ELEMENTS);
+
+        let female_content = session.download_file(country, &female_file)?;
+        let male_content = session.download_file(country, &male_file)?;
+
+        let (country, female_modified, female_rows) =
+            crate::table::parse_rows::<Y, A, Empty, Option<LifeTableRow>, _>(
+                female_content.as_slice(),
+            )
+            .map_err(Error::ImportError)?;
+        let (_, male_modified, male_rows) =
+            crate::table::parse_rows::<Y, A, Empty, Option<LifeTableRow>, _>(
+                male_content.as_slice(),
+            )
+            .map_err(Error::ImportError)?;
+
+        let merged_rows = merge_life_table_sexes(female_rows, male_rows);
+        let last_modified = female_modified.max(male_modified);
+
+        crate::table::build_table(country, last_modified, merged_rows).map_err(Error::ImportError)
+    }
+}
+
+/// Merges the per-age rows of a female-only and a male-only period life table (each already
+/// indexed by [`Empty`]) into rows indexed by [`Sex`]. A row present for only one sex is paired
+/// with `None` for the other, consistent with how the HMD's own "." placeholder is treated.
+fn merge_life_table_sexes<Y, A>(
+    mut female: crate::table::GroupedRows<Y, A, Empty, Option<LifeTableRow>>,
+    mut male: crate::table::GroupedRows<Y, A, Empty, Option<LifeTableRow>>,
+) -> crate::table::GroupedRows<Y, A, Sex, Option<LifeTableRow>>
+where
+    Y: Ord + Copy,
+    A: Ord + Copy,
+{
+    let years: std::collections::BTreeSet<Y> =
+        female.keys().copied().chain(male.keys().copied()).collect();
+
+    years
+        .into_iter()
+        .map(|year| {
+            let mut female_ages = female.remove(&year).unwrap_or_default();
+            let mut male_ages = male.remove(&year).unwrap_or_default();
+            let ages: std::collections::BTreeSet<A> = female_ages
+                .keys()
+                .copied()
+                .chain(male_ages.keys().copied())
+                .collect();
+
+            let age_map = ages
+                .into_iter()
+                .map(|age| {
+                    let female_value = female_ages.remove(&age).unwrap_or_default();
+                    let male_value = male_ages.remove(&age).unwrap_or_default();
+                    (age, [(Sex::Female, female_value), (Sex::Male, male_value)])
+                })
+                .collect();
+
+            (year, age_map)
+        })
+        .collect()
 }
 
 impl<Y> DownloadableTable for LifeExpectanciesAtBirth<Y>
@@ -210,7 +292,7 @@ fn parse_verification_token(html: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::covariates::{Age, Year};
+    use crate::covariates::{Age, Sex, Year};
     use crate::table::Index;
     use crate::{Range, Single};
 
@@ -234,8 +316,8 @@ mod tests {
 
     #[test]
     fn life_table_download_name_uses_index_size() {
-        let file_name = LifeTable::<Range<Year, 10>, Single<Age>>::file_name();
-        assert_eq!(file_name, "fltper_1x10");
+        let file_name = LifeTable::<Range<Year, 10>, Single<Age>, Empty>::file_name();
+        assert_eq!(file_name, "bltper_1x10");
     }
 
     #[test]
@@ -277,10 +359,33 @@ mod tests {
     #[test]
     fn downloads_life_table() {
         let session = login_from_env();
-        let table = session
+
+        let total = session
             .download::<LifeTable<Single<Year>, Single<Age>>>(Country::Germany)
-            .expect("failed to download life table");
-        assert_eq!(table.country, Country::Germany);
+            .expect("failed to download total life table");
+        assert_eq!(total.country, Country::Germany);
+
+        let by_sex =
+            LifeTable::<Single<Year>, Single<Age>, Sex>::download(&session, Country::Germany)
+                .expect("failed to download sex-indexed life table");
+        assert_eq!(by_sex.country, Country::Germany);
+
+        let age0 = Age::try_from(0).unwrap();
+        let female_ex = by_sex
+            .query(Year(2020), age0, Sex::Female)
+            .copied()
+            .flatten()
+            .map(|row| f64::from(row.ex));
+        let male_ex = by_sex
+            .query(Year(2020), age0, Sex::Male)
+            .copied()
+            .flatten()
+            .map(|row| f64::from(row.ex));
+        assert!(female_ex.is_some() && male_ex.is_some());
+        assert_ne!(
+            female_ex, male_ex,
+            "female and male life tables must differ"
+        );
     }
 
     #[test]

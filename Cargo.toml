@@ -1,6 +1,6 @@
 [package]
 name = "human_mortality_database"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 authors = ["Christopher Gundler <christopher@gundler.de>"]
 license = "MIT"

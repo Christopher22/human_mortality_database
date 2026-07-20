@@ -211,3 +211,16 @@ impl Value for PopulationSize {
             .map_err(|_| ValueError::InvalidNumber)
     }
 }
+
+/// The HMD marks a cell as undefined (e.g. a central death rate with zero exposure) with a
+/// lone "." token. `Option<V>` parses that placeholder as `None` and delegates everything else
+/// to `V`.
+impl<V: Value> Value for Option<V> {
+    fn parse_value(token: &str) -> Result<Self, ValueError> {
+        if token == "." {
+            Ok(None)
+        } else {
+            V::parse_value(token).map(Some)
+        }
+    }
+}

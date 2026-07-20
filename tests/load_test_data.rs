@@ -11,7 +11,9 @@ fn loads_births_txt() {
     assert_eq!(
         table
             .query(Year(1990), (), Sex::Female)
-            .map(|value| f64::from(*value)),
+            .copied()
+            .flatten()
+            .map(f64::from),
         Some(440_296.0)
     );
 }
@@ -26,7 +28,9 @@ fn loads_deaths_1x5_txt() {
     assert_eq!(
         table
             .query(Year(1992), Age::try_from(0).unwrap(), Sex::Male)
-            .map(|value| f64::from(*value)),
+            .copied()
+            .flatten()
+            .map(f64::from),
         Some(14_991.03)
     );
 }
@@ -41,7 +45,9 @@ fn loads_deaths_5x1_txt() {
     assert_eq!(
         table
             .query(Year(1990), Age::try_from(2).unwrap(), Sex::Female)
-            .map(|value| f64::from(*value)),
+            .copied()
+            .flatten()
+            .map(f64::from),
         Some(647.0)
     );
 }
@@ -56,7 +62,9 @@ fn loads_e0per_1x10_txt() {
     assert_eq!(
         table
             .query(Year(2004), (), Sex::Female)
-            .map(ToString::to_string),
+            .copied()
+            .flatten()
+            .map(|value| value.to_string()),
         Some("81.83".to_owned())
     );
 }
@@ -71,7 +79,9 @@ fn loads_mx_1x1_txt() {
     assert_eq!(
         table
             .query(Year(1990), Age::try_from(1).unwrap(), Sex::Male)
-            .map(|value| f64::from(*value)),
+            .copied()
+            .flatten()
+            .map(f64::from),
         Some(0.000676)
     );
 }

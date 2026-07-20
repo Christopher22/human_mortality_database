@@ -5,7 +5,7 @@ The table index model is intentionally small and composable. `Single<T>` represe
 
 ## Installation
 
-Add the crate to your project with Cargo. If you use `cargo add`, run `cargo add human_mortality_database`. If you prefer editing the manifest manually, add `human_mortality_database` to the `[dependencies]` section in your `Cargo.toml`.
+Add the crate to your project with Cargo. If you use `cargo add`, run `cargo add --git https://github.com/Christopher22/human_mortality_database.git`. If you prefer editing the manifest manually, add `human_mortality_database = { git = "https://github.com/Christopher22/human_mortality_database.git", branch = "main" }` to the `[dependencies]` section in your `Cargo.toml`.
 
 ### Building the Python binding
 This crate exposes optional Python bindings backed by the same Rust core logic. If you want to use it, use `maturin` to build/install the extension module:

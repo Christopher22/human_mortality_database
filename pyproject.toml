@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "human_mortality_database"
-version = "0.1.0"
+version = "0.3.0"
 description = "High-performance Python bindings for human_mortality_database"
 requires-python = ">=3.9"
 

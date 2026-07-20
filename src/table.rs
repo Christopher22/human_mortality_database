@@ -340,67 +340,108 @@ impl Country {
         }
     }
 
-    fn from_name(country_name: &str) -> Option<Self> {
-        match country_name {
-            "Australia" => Some(Country::Australia),
-            "Austria" => Some(Country::Austria),
-            "Belarus" => Some(Country::Belarus),
-            "Belgium" => Some(Country::Belgium),
-            "Bulgaria" => Some(Country::Bulgaria),
-            "Canada" => Some(Country::Canada),
-            "Chile" => Some(Country::Chile),
-            "Croatia" => Some(Country::Croatia),
-            "Czechia" => Some(Country::Czechia),
-            "Denmark" => Some(Country::Denmark),
-            "Estonia" => Some(Country::Estonia),
-            "Finland" => Some(Country::Finland),
-            "France" => Some(Country::FranceTotalPopulation),
-            "France Total population" => Some(Country::FranceTotalPopulation),
-            "France Civilian population" => Some(Country::FranceCivilianPopulation),
-            "Germany" => Some(Country::Germany),
-            "East Germany" => Some(Country::EastGermany),
-            "West Germany" => Some(Country::WestGermany),
-            "Greece" => Some(Country::Greece),
-            "Hong Kong" => Some(Country::HongKong),
-            "Hungary" => Some(Country::Hungary),
-            "Iceland" => Some(Country::Iceland),
-            "Ireland" => Some(Country::Ireland),
-            "Israel" => Some(Country::Israel),
-            "Italy" => Some(Country::Italy),
-            "Japan" => Some(Country::Japan),
-            "Latvia" => Some(Country::Latvia),
-            "Lithuania" => Some(Country::Lithuania),
-            "Luxembourg" => Some(Country::Luxembourg),
-            "Netherlands" => Some(Country::Netherlands),
-            "New Zealand" => Some(Country::NewZealandTotalPopulation),
-            "New Zealand Total population" => Some(Country::NewZealandTotalPopulation),
-            "Maori" => Some(Country::NewZealandMaori),
-            "Non-Maori" => Some(Country::NewZealandNonMaori),
-            "Norway" => Some(Country::Norway),
-            "Poland" => Some(Country::Poland),
-            "Portugal" => Some(Country::Portugal),
-            "Republic of Korea" => Some(Country::RepublicOfKorea),
-            "Russia" => Some(Country::Russia),
-            "Slovakia" => Some(Country::Slovakia),
-            "Slovenia" => Some(Country::Slovenia),
-            "Spain" => Some(Country::Spain),
-            "Sweden" => Some(Country::Sweden),
-            "Switzerland" => Some(Country::Switzerland),
-            "Taiwan" => Some(Country::Taiwan),
-            "U.K." => Some(Country::UnitedKingdomTotalPopulation),
-            "United Kingdom" => Some(Country::UnitedKingdomTotalPopulation),
-            "United Kingdom Total Population" => Some(Country::UnitedKingdomTotalPopulation),
-            "England & Wales Total Population" => Some(Country::EnglandAndWalesTotalPopulation),
-            "England & Wales Civilian Population" => {
-                Some(Country::EnglandAndWalesCivilianPopulation)
-            }
-            "Scotland" => Some(Country::Scotland),
-            "Northern Ireland" => Some(Country::NorthernIreland),
-            "U.S.A." => Some(Country::UnitedStatesOfAmerica),
-            "USA" => Some(Country::UnitedStatesOfAmerica),
-            "Ukraine" => Some(Country::Ukraine),
-            _ => None,
-        }
+    /// Finds the country whose display name the given metadata line starts with.
+    ///
+    /// The country name cannot reliably be isolated by splitting on the first comma: some HMD
+    /// display names contain an embedded comma of their own (e.g. "England and Wales, Total
+    /// Population"). Matching the longest known display name that prefixes the line handles both
+    /// plain names and comma-bearing ones uniformly, and resolves the ambiguity between e.g.
+    /// "New Zealand" and "New Zealand -- Maori" by preferring the more specific (longer) name.
+    fn from_line_prefix(line: &str) -> Option<Self> {
+        const NAMES: &[(&str, Country)] = &[
+            ("Australia", Country::Australia),
+            ("Austria", Country::Austria),
+            ("Belarus", Country::Belarus),
+            ("Belgium", Country::Belgium),
+            ("Bulgaria", Country::Bulgaria),
+            ("Canada", Country::Canada),
+            ("Chile", Country::Chile),
+            ("Croatia", Country::Croatia),
+            ("Czechia", Country::Czechia),
+            ("Denmark", Country::Denmark),
+            ("Estonia", Country::Estonia),
+            ("Finland", Country::Finland),
+            ("France Total population", Country::FranceTotalPopulation),
+            (
+                "France Civilian population",
+                Country::FranceCivilianPopulation,
+            ),
+            ("France", Country::FranceTotalPopulation),
+            ("East Germany", Country::EastGermany),
+            ("West Germany", Country::WestGermany),
+            ("Germany", Country::Germany),
+            ("Greece", Country::Greece),
+            ("Hong Kong", Country::HongKong),
+            ("Hungary", Country::Hungary),
+            ("Iceland", Country::Iceland),
+            ("Ireland", Country::Ireland),
+            ("Israel", Country::Israel),
+            ("Italy", Country::Italy),
+            ("Japan", Country::Japan),
+            ("Latvia", Country::Latvia),
+            ("Lithuania", Country::Lithuania),
+            ("Luxemburg", Country::Luxembourg),
+            ("Luxembourg", Country::Luxembourg),
+            ("Netherlands", Country::Netherlands),
+            ("New Zealand -- Maori", Country::NewZealandMaori),
+            ("New Zealand -- Non-Maori", Country::NewZealandNonMaori),
+            (
+                "New Zealand Total population",
+                Country::NewZealandTotalPopulation,
+            ),
+            ("New Zealand", Country::NewZealandTotalPopulation),
+            ("Maori", Country::NewZealandMaori),
+            ("Non-Maori", Country::NewZealandNonMaori),
+            ("Norway", Country::Norway),
+            ("Poland", Country::Poland),
+            ("Portugal", Country::Portugal),
+            ("Republic of Korea", Country::RepublicOfKorea),
+            ("Russia", Country::Russia),
+            ("Slovakia", Country::Slovakia),
+            ("Slovenia", Country::Slovenia),
+            ("Spain", Country::Spain),
+            ("Sweden", Country::Sweden),
+            ("Switzerland", Country::Switzerland),
+            ("Taiwan", Country::Taiwan),
+            (
+                "United Kingdom Total Population",
+                Country::UnitedKingdomTotalPopulation,
+            ),
+            ("United Kingdom", Country::UnitedKingdomTotalPopulation),
+            ("U.K.", Country::UnitedKingdomTotalPopulation),
+            (
+                "England and Wales, Total Population",
+                Country::EnglandAndWalesTotalPopulation,
+            ),
+            (
+                "England and Wales, Civilian National Population",
+                Country::EnglandAndWalesCivilianPopulation,
+            ),
+            (
+                "England & Wales Total Population",
+                Country::EnglandAndWalesTotalPopulation,
+            ),
+            (
+                "England & Wales Civilian Population",
+                Country::EnglandAndWalesCivilianPopulation,
+            ),
+            ("Scotland", Country::Scotland),
+            ("Northern Ireland", Country::NorthernIreland),
+            (
+                "The United States of America",
+                Country::UnitedStatesOfAmerica,
+            ),
+            ("U.S.A.", Country::UnitedStatesOfAmerica),
+            ("USA", Country::UnitedStatesOfAmerica),
+            ("Ukraine", Country::Ukraine),
+        ];
+
+        let line = line.trim_start();
+        NAMES
+            .iter()
+            .filter(|(name, _)| line.starts_with(name))
+            .max_by_key(|(name, _)| name.len())
+            .map(|&(_, country)| country)
     }
 }
 
@@ -486,6 +527,32 @@ where
     R: std::io::Read,
     D: DataParser<S>,
 {
+    let (country, last_modified, grouped) = parse_rows::<Y, A, S, D, R>(reader)?;
+    build_table(country, last_modified, grouped)
+}
+
+/// Rows of an HMD table file grouped by year and age, prior to conversion into a [`Table`]'s
+/// opaque container representation.
+pub(crate) type GroupedRows<Y, A, S, D> = BTreeMap<Y, BTreeMap<A, <S as Index>::Container<D>>>;
+
+/// Parses the metadata, header, and data rows of an HMD table file, without converting the
+/// resulting rows into a [`Table`]'s opaque container representation.
+///
+/// This is split out from [`load_impl`] so that callers who need to combine rows from more than
+/// one source file before building a [`Table`] (e.g. merging a country's separate `fltper` and
+/// `mltper` period life table files into one table indexed by sex) can reuse the row-level
+/// parsing logic.
+#[allow(private_bounds, clippy::type_complexity)]
+pub(crate) fn parse_rows<Y, A, S, D, R>(
+    reader: R,
+) -> Result<(Country, NaiveDate, GroupedRows<Y, A, S, D>), ImportError>
+where
+    Y: TableIndex,
+    A: TableIndex,
+    S: Index,
+    R: std::io::Read,
+    D: DataParser<S>,
+{
     let mut non_empty_lines = std::io::BufReader::new(reader)
         .lines()
         .collect::<Result<Vec<_>, _>>()
@@ -532,6 +599,21 @@ where
         }
     }
 
+    Ok((country, last_modified, grouped))
+}
+
+/// Builds a [`Table`] from already-parsed rows, e.g. the output of [`parse_rows`] or rows merged
+/// from more than one source file.
+pub(crate) fn build_table<Y, A, S, D>(
+    country: Country,
+    last_modified: NaiveDate,
+    grouped: GroupedRows<Y, A, S, D>,
+) -> Result<Table<Y, A, S, D>, ImportError>
+where
+    Y: TableIndex,
+    A: TableIndex,
+    S: Index,
+{
     let mut converted_years = BTreeMap::new();
     for (year, age_map) in grouped {
         converted_years.insert(year, A::from_btree(age_map)?);
@@ -650,12 +732,7 @@ impl Header {
 }
 
 fn parse_metadata(line: &str) -> Result<(Country, NaiveDate), ImportError> {
-    let country_name = line
-        .split(',')
-        .next()
-        .map(str::trim)
-        .ok_or(ImportError::InvalidMetadata)?;
-    let country = Country::from_name(country_name).ok_or(ImportError::UnknownCountry)?;
+    let country = Country::from_line_prefix(line).ok_or(ImportError::UnknownCountry)?;
 
     let last_modified = line
         .split("Last modified:")
@@ -663,9 +740,47 @@ fn parse_metadata(line: &str) -> Result<(Country, NaiveDate), ImportError> {
         .and_then(|rest| rest.split(';').next())
         .map(str::trim)
         .ok_or(ImportError::MissingLastModified)?;
-    let last_modified = NaiveDate::parse_from_str(last_modified, "%d %b %Y")
-        .map_err(|_| ImportError::InvalidLastModified)?;
+    let last_modified = parse_last_modified_date(last_modified)?;
     Ok((country, last_modified))
+}
+
+/// Parses a "Last modified" date such as "03 Jun 2022" or "09 juin 2026".
+///
+/// The HMD occasionally serves this field with a French month abbreviation instead of English
+/// (observed for the U.S.A. dataset), so the month name is matched case-insensitively against
+/// both languages rather than relying on `chrono`'s locale-fixed "%b" parser.
+fn parse_last_modified_date(text: &str) -> Result<NaiveDate, ImportError> {
+    fn parse_month_name(token: &str) -> Option<u32> {
+        let normalized = token.to_ascii_lowercase();
+        let normalized = normalized.trim_end_matches('.');
+        match normalized {
+            "jan" | "janv" | "janvier" => Some(1),
+            "feb" | "fev" | "févr" | "fevrier" | "février" => Some(2),
+            "mar" | "mars" => Some(3),
+            "apr" | "avr" | "avril" => Some(4),
+            "may" | "mai" => Some(5),
+            "jun" | "juin" => Some(6),
+            "jul" | "juil" | "juillet" => Some(7),
+            "aug" | "aou" | "aoû" | "aout" | "août" => Some(8),
+            "sep" | "sept" | "septembre" => Some(9),
+            "oct" | "octobre" => Some(10),
+            "nov" | "novembre" => Some(11),
+            "dec" | "dece" | "déc" | "decembre" | "décembre" => Some(12),
+            _ => None,
+        }
+    }
+
+    let mut parts = text.split_whitespace();
+    let day = parts.next().and_then(|token| token.parse::<u32>().ok());
+    let month = parts.next().and_then(parse_month_name);
+    let year = parts.next().and_then(|token| token.parse::<i32>().ok());
+
+    match (day, month, year) {
+        (Some(day), Some(month), Some(year)) => {
+            NaiveDate::from_ymd_opt(year, month, day).ok_or(ImportError::InvalidLastModified)
+        }
+        _ => Err(ImportError::InvalidLastModified),
+    }
 }
 
 fn parse_numeric_range(token: &str) -> Result<(u16, u16), ImportError> {
@@ -870,6 +985,22 @@ impl DataParser<Empty> for LifeTableRow {
     }
 }
 
+impl DataParser<Empty> for Option<LifeTableRow> {
+    fn parse_data(
+        header: &Header,
+        fields: &[&str],
+    ) -> Result<<Empty as Index>::Container<Self>, ImportError> {
+        // The HMD blanks out entire rows (all columns at once) with "." during historical gaps
+        // in a country's data (e.g. Belgium during WWI). "mx" is used as a sentinel for the row:
+        // if it is undefined the whole row is undefined.
+        let mx_index = header.require("mx")?;
+        if fields[mx_index] == "." {
+            return Ok(None);
+        }
+        LifeTableRow::parse_data(header, fields).map(Some)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -912,6 +1043,30 @@ mod tests {
         assert_eq!(
             table.query(Year(1990), Age::try_from(110).unwrap(), Sex::Male),
             Some(&1.20)
+        );
+    }
+
+    #[test]
+    fn loads_mx_1x1_tolerates_dot_placeholder_for_undefined_rate() {
+        use crate::values::CentralDeathRate;
+
+        let input = "Germany, Death rates (period 1x1),\tLast modified: 03 Jun 2022;  Methods Protocol: v6 (2017)\n\nYear Age Female Male Total\n1990 0 0.10 0.20 0.15\n1990 110+ . 1.20 1.20\n";
+        let table = Table::<Single<Year>, Single<Age>, Sex, Option<CentralDeathRate>>::load(
+            input.as_bytes(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            table.query(Year(1990), Age::try_from(110).unwrap(), Sex::Female),
+            Some(&None)
+        );
+        assert_eq!(
+            table
+                .query(Year(1990), Age::try_from(110).unwrap(), Sex::Male)
+                .copied()
+                .flatten()
+                .map(f64::from),
+            Some(1.20)
         );
     }
 

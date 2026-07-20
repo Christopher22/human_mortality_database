@@ -486,7 +486,7 @@ fn parse_interval(name: &str, value: usize) -> PyResult<usize> {
 }
 
 fn query_year_sex_scalar<Y, D>(
-    table: &Table<Y, Empty, Sex, D>,
+    table: &Table<Y, Empty, Sex, Option<D>>,
     year: u16,
     sex: Option<PySex>,
 ) -> PyResult<Option<f64>>
@@ -496,11 +496,15 @@ where
     f64: From<D>,
 {
     let sex = parse_sex(sex)?;
-    Ok(table.query(Year(year), (), sex).copied().map(f64::from))
+    Ok(table
+        .query(Year(year), (), sex)
+        .copied()
+        .flatten()
+        .map(f64::from))
 }
 
 fn query_year_age_sex_scalar<Y, A, D>(
-    table: &Table<Y, A, Sex, D>,
+    table: &Table<Y, A, Sex, Option<D>>,
     year: u16,
     age: Option<u8>,
     sex: Option<PySex>,
@@ -513,11 +517,15 @@ where
 {
     let age = parse_age(age)?;
     let sex = parse_sex(sex)?;
-    Ok(table.query(Year(year), age, sex).copied().map(f64::from))
+    Ok(table
+        .query(Year(year), age, sex)
+        .copied()
+        .flatten()
+        .map(f64::from))
 }
 
 fn query_life_table_row<Y, A>(
-    table: &Table<Y, A, Empty, LifeTableRow>,
+    table: &Table<Y, A, Empty, Option<LifeTableRow>>,
     year: u16,
     age: u8,
 ) -> PyResult<Option<PyLifeTableRow>>
@@ -529,6 +537,7 @@ where
     Ok(table
         .query(Year(year), age, ())
         .copied()
+        .flatten()
         .map(PyLifeTableRow::from))
 }
 
