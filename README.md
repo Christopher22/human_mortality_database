@@ -3,9 +3,11 @@
 This (inofficial) crate provides a strongly typed Rust interface for loading and querying tables from the [Human Mortality Database (HMD)](https://www.mortality.org/). It parses HMD text files into typed tables and lets you query by year, age, and sex with index types that model scalar and interval dimensions explicitly. 
 The table index model is intentionally small and composable. `Single<T>` represents an exact index key such as one year or one age. `Range<T, N>` represents an interval index key such as a five-year or ten-year group, where `N` captures the declared grouping width at the type level. `Empty` represents a missing dimension and is useful for one-dimensional tables or data that does not vary by that axis.
 
+This crate is not maintained, endorsed, or supported by the (amazing) people behind the [Human Mortality Database (HMD)](https://www.mortality.org/).
+
 ## Installation
 
-Add the crate to your project with Cargo. If you use `cargo add`, run `cargo add --git https://github.com/Christopher22/human_mortality_database.git`. If you prefer editing the manifest manually, add `human_mortality_database = { git = "https://github.com/Christopher22/human_mortality_database.git", branch = "main" }` to the `[dependencies]` section in your `Cargo.toml`.
+Add the crate to your project with Cargo. If you use `cargo add`, run `cargo add human_mortality_database` or `cargo add --git https://github.com/Christopher22/human_mortality_database.git`. If you prefer editing the manifest manually, add `human_mortality_database = { git = "https://github.com/Christopher22/human_mortality_database.git", branch = "main" }` to the `[dependencies]` section in your `Cargo.toml`.
 
 ### Building the Python binding
 This crate exposes optional Python bindings backed by the same Rust core logic. If you want to use it, use `maturin` to build/install the extension module:
