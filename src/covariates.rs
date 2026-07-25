@@ -66,6 +66,24 @@ impl From<Year> for u16 {
     }
 }
 
+impl From<Year> for u32 {
+    fn from(value: Year) -> Self {
+        value.0 as u32
+    }
+}
+
+impl TryFrom<u32> for Year {
+    type Error = &'static str;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        if value <= u16::MAX as u32 {
+            Ok(Self(value as u16))
+        } else {
+            Err("Year must be between 0 and 65535")
+        }
+    }
+}
+
 /// The biological sex.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Sex {
