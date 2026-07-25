@@ -6,6 +6,10 @@ authors = ["Christopher Gundler <christopher@gundler.de>"]
 license = "MIT"
 readme = "README.md"
 description = "Query the Human Mortality Database"
+repository = "https://github.com/Christopher22/human_mortality_database"
+documentation = "https://christopher22.github.io/human_mortality_database/human_mortality_database/index.html"
+categories = ["science"]
+keywords = ["epidemiology", "demography", "mortality", "survival", "statistics"]
 
 [lib]
 crate-type = ["rlib", "cdylib"]
