@@ -1,6 +1,6 @@
 [package]
 name = "human_mortality_database"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 authors = ["Christopher Gundler <christopher@gundler.de>"]
 license = "MIT"
@@ -15,11 +15,12 @@ keywords = ["epidemiology", "demography", "mortality", "survival", "statistics"]
 crate-type = ["rlib", "cdylib"]
 
 [features]
-default = []
+default = ["download"]
 python = ["dep:pyo3"]
+download = ["dep:reqwest", "dep:serde_urlencoded"]
 
 [dependencies]
 chrono = "0.4.44"
-reqwest = { version = "0.13.2", features = ["blocking", "cookies"] }
-serde_urlencoded = "0.7"
+reqwest = { version = "0.13.2", optional = true, features = ["blocking", "cookies"] }
+serde_urlencoded = { version = "0.7", optional = true }
 pyo3 = { version = "0.23", optional = true, features = ["abi3-py39", "extension-module"] }

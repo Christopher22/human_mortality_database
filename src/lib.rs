@@ -14,6 +14,7 @@
 #[cfg(feature = "python")]
 mod binding;
 pub mod covariates;
+#[cfg(feature = "download")]
 mod download;
 mod table;
 pub mod values;
@@ -48,5 +49,7 @@ pub type LifeExpectanciesAtBirth<Y> =
 /// sex recorded zero exposure for that year, or during historical gaps in a country's data.
 pub type CentralDeathRates<Y, A> = Table<Y, A, covariates::Sex, Option<values::CentralDeathRate>>;
 
-pub use self::download::{DownloadableTable, Error as DownloadError, Session};
 pub use self::table::{Country, Empty, Index, Range, Single, Table};
+
+#[cfg(feature = "download")]
+pub use self::download::{DownloadableTable, Error as DownloadError, Session};
